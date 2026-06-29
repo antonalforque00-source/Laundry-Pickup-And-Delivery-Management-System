@@ -1,0 +1,6 @@
+{
+  "name": "Laundry Pickup and Delivery Management System",
+  "description": "A comprehensive system to manage laundry pickup requests, processing states, and delivery for both customers and administrators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
