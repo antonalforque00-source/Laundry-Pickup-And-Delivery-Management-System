@@ -109,6 +109,7 @@ export default function App() {
           role: existingUser.role as any,
           balance: existingUser.balance,
           isApproved: existingUser.is_approved,
+          password: existingUser.password,
         };
       } else {
         // New user registration

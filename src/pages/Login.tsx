@@ -93,16 +93,34 @@ export default function Login({ onLogin }: LoginProps) {
           if (error) throw error;
           if (!data.user) throw new Error('Login failed.');
           
-          const metaRole = data.user.user_metadata?.role;
-          const metaName = data.user.user_metadata?.name;
-          
-          loggedUser = {
-            id: data.user.id,
-            name: metaName || email.split('@')[0],
-            email: data.user.email || email,
-            role: metaRole || assignedRole,
-            balance: 0
-          };
+          // Fetch the latest user info from the public.users table
+          const { data: dbUser, error: dbError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (dbUser) {
+            loggedUser = {
+              id: dbUser.id,
+              name: dbUser.name,
+              email: dbUser.email,
+              role: dbUser.role,
+              balance: dbUser.balance,
+              password: dbUser.password
+            };
+          } else {
+            const metaRole = data.user.user_metadata?.role;
+            const metaName = data.user.user_metadata?.name;
+            
+            loggedUser = {
+              id: data.user.id,
+              name: metaName || email.split('@')[0],
+              email: data.user.email || email,
+              role: metaRole || assignedRole,
+              balance: 0
+            };
+          }
         }
       } else {
         loggedUser = {
