@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Waves, Lock, Mail, ArrowRight, User as UserIcon, Eye, EyeOff, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from '../types';
+import { supabase, hasValidSupabaseKeys } from '../lib/supabase';
 
 interface LoginProps {
   onLogin: (user: User) => Promise<boolean | void> | void;
@@ -40,18 +41,62 @@ export default function Login({ onLogin }: LoginProps) {
       } else if (email.toLowerCase().includes('rider')) {
         assignedRole = 'rider';
       }
-      
-      loggedUser = {
-        id: `CUS-${Math.floor(Math.random() * 10000)}`,
-        name: step === 'login' ? email.split('@')[0] : name || 'New User',
-        email,
-        role: assignedRole,
-        balance: 0
-      };
+
+      if (hasValidSupabaseKeys) {
+        if (step === 'signup') {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name: name || 'New User',
+                role: assignedRole,
+              }
+            }
+          });
+          if (error) throw error;
+          if (!data.user) throw new Error('Signup failed. Please try again.');
+          
+          loggedUser = {
+            id: data.user.id,
+            name: name || 'New User',
+            email: data.user.email || email,
+            role: assignedRole,
+            balance: 0
+          };
+        } else {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (error) throw error;
+          if (!data.user) throw new Error('Login failed.');
+          
+          const metaRole = data.user.user_metadata?.role;
+          const metaName = data.user.user_metadata?.name;
+          
+          loggedUser = {
+            id: data.user.id,
+            name: metaName || email.split('@')[0],
+            email: data.user.email || email,
+            role: metaRole || assignedRole,
+            balance: 0
+          };
+        }
+      } else {
+        loggedUser = {
+          id: `CUS-${Math.floor(Math.random() * 10000)}`,
+          name: step === 'login' ? email.split('@')[0] : name || 'New User',
+          email,
+          role: assignedRole,
+          balance: 0
+        };
+      }
 
       await onLogin(loggedUser);
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred during authentication');
+    } finally {
       setIsLoading(false);
     }
   };
