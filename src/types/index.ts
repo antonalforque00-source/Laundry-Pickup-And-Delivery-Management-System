@@ -25,6 +25,7 @@ export interface User {
   phone?: string;
   address?: string;
   isApproved?: boolean;
+  password?: string;
 }
 
 export interface Alert {

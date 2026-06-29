@@ -30,6 +30,7 @@ export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboar
           name: u.name,
           email: u.email,
           role: u.role as any,
+          password: u.password,
           balance: u.balance,
           phone: u.phone || undefined,
           address: u.address || undefined,
@@ -47,6 +48,16 @@ export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboar
     const { error } = await supabase.from('users').update({ is_approved: true }).eq('id', userId);
     if (!error) {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, isApproved: true } : u));
+    }
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    if (!hasValidSupabaseKeys) return;
+    const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
+    if (!error) {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
+    } else {
+      console.error('Failed to update role', error);
     }
   };
 
@@ -247,8 +258,21 @@ export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboar
                       <div>
                         <h4 className="font-bold text-slate-900 text-lg">{user.name}</h4>
                         <p className="text-slate-500 text-sm mb-1">{user.email}</p>
-                        <span className="bg-slate-200 text-slate-700 text-xs px-2 py-1 rounded-md font-bold uppercase tracking-wider">{user.role}</span>
-                        {!user.isApproved && <span className="ml-2 bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-md font-bold uppercase tracking-wider">Pending</span>}
+                        {user.password && <p className="text-slate-400 font-mono text-xs mb-2">Password: {user.password}</p>}
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase">Role:</span>
+                          <select 
+                            value={user.role} 
+                            onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                            className="bg-white border border-slate-200 text-slate-800 text-xs rounded-lg px-2 py-1 font-bold outline-none focus:ring-1 focus:ring-brand-500"
+                          >
+                            <option value="customer">Customer</option>
+                            <option value="staff">Staff</option>
+                            <option value="rider">Rider</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          {!user.isApproved && <span className="ml-2 bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-md font-bold uppercase tracking-wider">Pending</span>}
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-slate-500 font-medium mb-1">Balance</div>

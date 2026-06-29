@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     role TEXT NOT NULL DEFAULT 'customer',
+    password TEXT,
     balance REAL NOT NULL DEFAULT 0,
     phone TEXT,
     address TEXT,

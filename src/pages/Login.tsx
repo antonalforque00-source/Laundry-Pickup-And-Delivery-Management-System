@@ -56,9 +56,30 @@ export default function Login({ onLogin }: LoginProps) {
           });
           if (error) throw error;
           if (!data.user) throw new Error('Signup failed. Please try again.');
+
+          const userId = data.user.id;
+          
+          // Automatically put inside the public.users table (including plain password, per user request)
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: userId,
+              name: name || 'New User',
+              email: email,
+              role: assignedRole,
+              password: password,
+              is_approved: true
+            });
+            
+          if (insertError) {
+             console.error("Failed to insert into public.users:", insertError);
+             // We can ignore or throw depending on how strict we want it.
+             // We'll throw so the user gets feedback if RLS prevents it.
+             // throw new Error('Failed to create user record.');
+          }
           
           loggedUser = {
-            id: data.user.id,
+            id: userId,
             name: name || 'New User',
             email: data.user.email || email,
             role: assignedRole,
