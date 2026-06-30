@@ -44,23 +44,29 @@ export default function Login({ onLogin }: LoginProps) {
 
       if (hasValidSupabaseKeys) {
         if (step === 'signup') {
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: {
-                name: name || 'New User',
-                role: assignedRole,
-              }
-            }
-          });
-          if (error) throw error;
-          if (!data.user) throw new Error('Signup failed. Please try again.');
+          // Check if user already exists in our table
+          const { data: existingUsers, error: checkError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email);
 
-          const userId = data.user.id;
+          if (checkError) {
+             throw new Error('Database error checking for existing user.');
+          }
+
+          if (existingUsers && existingUsers.length > 0) {
+            throw new Error('User with this email already exists.');
+          }
+
+          let prefix = 'CUS';
+          if (assignedRole === 'admin') prefix = 'ADM';
+          if (assignedRole === 'staff') prefix = 'STF';
+          if (assignedRole === 'rider') prefix = 'RDR';
           
-          // Automatically put inside the public.users table (including plain password, per user request)
-          const { error: insertError } = await supabase
+          const userId = `${prefix}-${Math.floor(Math.random() * 10000)}`;
+          
+          // Automatically put inside the public.users table
+          const { data: insertData, error: insertError } = await supabase
             .from('users')
             .insert({
               id: userId,
@@ -69,58 +75,44 @@ export default function Login({ onLogin }: LoginProps) {
               role: assignedRole,
               password: password,
               is_approved: true
-            });
+            })
+            .select()
+            .single();
             
           if (insertError) {
              console.error("Failed to insert into public.users:", insertError);
-             // We can ignore or throw depending on how strict we want it.
-             // We'll throw so the user gets feedback if RLS prevents it.
-             // throw new Error('Failed to create user record.');
+             throw new Error('Failed to create user record.');
           }
           
           loggedUser = {
             id: userId,
             name: name || 'New User',
-            email: data.user.email || email,
+            email: email,
             role: assignedRole,
-            balance: 0
+            balance: 0,
+            password: password
           };
         } else {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (error) throw error;
-          if (!data.user) throw new Error('Login failed.');
-          
           // Fetch the latest user info from the public.users table
           const { data: dbUser, error: dbError } = await supabase
             .from('users')
             .select('*')
-            .eq('id', data.user.id)
+            .eq('email', email)
+            .eq('password', password)
             .single();
 
-          if (dbUser) {
-            loggedUser = {
-              id: dbUser.id,
-              name: dbUser.name,
-              email: dbUser.email,
-              role: dbUser.role,
-              balance: dbUser.balance,
-              password: dbUser.password
-            };
-          } else {
-            const metaRole = data.user.user_metadata?.role;
-            const metaName = data.user.user_metadata?.name;
-            
-            loggedUser = {
-              id: data.user.id,
-              name: metaName || email.split('@')[0],
-              email: data.user.email || email,
-              role: metaRole || assignedRole,
-              balance: 0
-            };
+          if (dbError || !dbUser) {
+            throw new Error('Invalid email or password.');
           }
+
+          loggedUser = {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            role: dbUser.role,
+            balance: dbUser.balance,
+            password: dbUser.password
+          };
         }
       } else {
         loggedUser = {
@@ -134,7 +126,11 @@ export default function Login({ onLogin }: LoginProps) {
 
       await onLogin(loggedUser);
     } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during authentication');
+      let errorMessage = err.message || 'An error occurred during authentication';
+      if (errorMessage.toLowerCase().includes('rate limit')) {
+        errorMessage = 'Sign up rate limit exceeded by the database. Please try again later or use an existing account.';
+      }
+      setErrorMsg(errorMessage);
     } finally {
       setIsLoading(false);
     }
