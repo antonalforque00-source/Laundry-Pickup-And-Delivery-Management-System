@@ -34,9 +34,11 @@ export default function Login({ onLogin }: LoginProps) {
     
     try {
       let loggedUser: User;
-      let assignedRole: 'customer' | 'staff' | 'rider' = 'customer';
+      let assignedRole: 'customer' | 'staff' | 'rider' | 'admin' = 'customer';
       
-      if (email.toLowerCase().includes('staff')) {
+      if (email.toLowerCase().includes('admin')) {
+        assignedRole = 'admin';
+      } else if (email.toLowerCase().includes('staff')) {
         assignedRole = 'staff';
       } else if (email.toLowerCase().includes('rider')) {
         assignedRole = 'rider';
@@ -97,12 +99,20 @@ export default function Login({ onLogin }: LoginProps) {
           const { data: dbUser, error: dbError } = await supabase
             .from('users')
             .select('*')
-            .eq('email', email)
-            .eq('password', password)
+            .ilike('email', email)
             .single();
 
           if (dbError || !dbUser) {
-            throw new Error('Invalid email or password.');
+            throw new Error('User not found. Please check your email.');
+          }
+          
+          // If a password is set in the DB, verify it
+          if (dbUser.password && dbUser.password !== password) {
+            throw new Error('Invalid password.');
+          } else if (!dbUser.password) {
+             // If they created the user before we started saving passwords, let's save this one
+             await supabase.from('users').update({ password }).eq('id', dbUser.id);
+             dbUser.password = password;
           }
 
           loggedUser = {

@@ -272,6 +272,9 @@ export default function App() {
               currentTab={currentTab} 
             />
           )}
+          {currentTab === 'admin-dashboard' && (
+            <AdminDashboard orders={orders} onUpdateStatus={handleUpdateOrderStatus} />
+          )}
         </>
       )}
     </MainLayout>

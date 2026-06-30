@@ -47,9 +47,10 @@ export default function MainLayout({ children, user, currentTab, onTabChange, on
   ];
 
   const staffTabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'dashboard', label: 'Staff Dashboard', icon: Home },
     { id: 'processing', label: 'Processing', icon: Waves },
-    { id: 'inventory', label: 'Inventory', icon: ClipboardList },
+    { id: 'inventory', label: 'Inventory', icon: Package },
+    { id: 'admin-dashboard', label: 'Admin Controls', icon: LayoutDashboard },
   ];
 
   const adminTabs = [
