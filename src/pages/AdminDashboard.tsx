@@ -1,25 +1,34 @@
 import { Order, OrderStatus, User } from '../types';
-import { Search, Filter, Droplets, Truck, CheckCircle2, Clock, Users, UserCheck } from 'lucide-react';
+import { Search, Filter, Droplets, Truck, CheckCircle2, Clock, Users, UserCheck, Plus, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, hasValidSupabaseKeys } from '../lib/supabase';
 
 interface AdminDashboardProps {
+  user: User;
   orders: Order[];
   onUpdateStatus: (orderId: string, status: OrderStatus) => void;
+  currentView?: 'orders' | 'users';
 }
 
-export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboardProps) {
+export default function AdminDashboard({ user, orders, onUpdateStatus, currentView = 'orders' }: AdminDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'All'>('All');
-  const [view, setView] = useState<'orders' | 'users'>('orders');
   
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState<{ [key: string]: string }>({});
 
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState('customer');
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
+  const [createUserError, setCreateUserError] = useState('');
+
   useEffect(() => {
-    if (!hasValidSupabaseKeys || view !== 'users') return;
+    if (!hasValidSupabaseKeys || currentView !== 'users') return;
     
     const fetchUsers = async () => {
       setIsLoadingUsers(true);
@@ -41,7 +50,7 @@ export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboar
     };
 
     fetchUsers();
-  }, [view]);
+  }, [currentView]);
 
   const handleApproveUser = async (userId: string) => {
     if (!hasValidSupabaseKeys) return;
@@ -58,6 +67,65 @@ export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboar
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
     } else {
       console.error('Failed to update role', error);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hasValidSupabaseKeys) return;
+    setCreateUserError('');
+    setIsLoadingUsers(true);
+
+    try {
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', newUserEmail);
+
+      if (checkError) throw new Error('Error checking for existing user.');
+      if (existingUsers && existingUsers.length > 0) throw new Error('User with this email already exists.');
+
+      let prefix = 'CUS';
+      if (newUserRole === 'admin') prefix = 'ADM';
+      if (newUserRole === 'staff') prefix = 'STF';
+      if (newUserRole === 'rider') prefix = 'RDR';
+      
+      const userId = `${prefix}-${Math.floor(Math.random() * 10000)}`;
+
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          name: newUserName || 'New User',
+          email: newUserEmail,
+          role: newUserRole,
+          password: newUserPassword,
+          is_approved: true
+        })
+        .select()
+        .single();
+
+      if (error) throw new Error('Failed to create user record.');
+
+      setUsers(prev => [{
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role as any,
+        password: data.password,
+        balance: data.balance,
+        isApproved: data.is_approved
+      }, ...prev]);
+
+      setIsCreatingUser(false);
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setNewUserRole('customer');
+    } catch (err: any) {
+      setCreateUserError(err.message || 'An error occurred while creating user.');
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
@@ -138,28 +206,13 @@ export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboar
         ))}
       </div>
 
-      <div className="flex bg-slate-200/50 p-1 rounded-xl w-max">
-        <button 
-          onClick={() => setView('orders')}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'orders' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          Manage Orders
-        </button>
-        <button 
-          onClick={() => setView('users')}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${view === 'users' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          <Users size={16} /> Users & Balances
-        </button>
-      </div>
-
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="bg-white rounded-3xl shadow-xl shadow-brand-100/40 border border-brand-100/60 overflow-hidden"
       >
-        {view === 'orders' ? (
+        {currentView === 'orders' ? (
           <>
             <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50/50">
               <div className="relative w-full sm:max-w-md">
@@ -247,7 +300,101 @@ export default function AdminDashboard({ orders, onUpdateStatus }: AdminDashboar
           </>
         ) : (
           <div className="p-6">
-            <h3 className="text-xl font-bold text-slate-900 mb-4">Manage Users & Balances</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Manage Users & Balances</h3>
+              <button
+                onClick={() => setIsCreatingUser(!isCreatingUser)}
+                className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2"
+              >
+                {isCreatingUser ? 'Cancel' : <><Plus size={16} /> Create User</>}
+              </button>
+            </div>
+            
+            <AnimatePresence>
+              {isCreatingUser && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden mb-6"
+                >
+                  <form onSubmit={handleCreateUser} className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                    <h4 className="font-bold text-slate-900 mb-4">Create New User</h4>
+                    
+                    {createUserError && (
+                      <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-medium mb-4">
+                        {createUserError}
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={newUserName}
+                          onChange={e => setNewUserName(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Email</label>
+                        <input
+                          type="email"
+                          required
+                          value={newUserEmail}
+                          onChange={e => setNewUserEmail(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Password</label>
+                        <div className="relative">
+                          <input
+                            type={showNewUserPassword ? "text" : "password"}
+                            required
+                            value={newUserPassword}
+                            onChange={e => setNewUserPassword(e.target.value)}
+                            className="w-full pl-4 pr-10 py-2 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                          >
+                            {showNewUserPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
+                        <select
+                          value={newUserRole}
+                          onChange={e => setNewUserRole(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                        >
+                          <option value="customer">Customer</option>
+                          <option value="staff">Staff</option>
+                          <option value="rider">Rider</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={isLoadingUsers}
+                        className="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+                      >
+                        {isLoadingUsers ? 'Creating...' : 'Create User'}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {isLoadingUsers ? (
               <div className="py-8 text-center text-slate-500 font-medium animate-pulse">Loading users...</div>
             ) : users.length > 0 ? (

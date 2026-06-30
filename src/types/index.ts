@@ -61,3 +61,13 @@ export interface InventoryItem {
   lowStockThreshold: number;
 }
 
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: Role | string;
+  receiverRole: Role | string;
+  content: string;
+  createdAt: string;
+}
+

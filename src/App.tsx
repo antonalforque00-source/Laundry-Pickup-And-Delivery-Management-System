@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import { Order, User, Alert } from './types';
 import RiderDashboard from './pages/RiderDashboard';
 import StaffDashboard from './pages/StaffDashboard';
+import TeamChat from './components/TeamChat';
 import { INITIAL_ORDERS, INITIAL_ALERTS, INITIAL_INVENTORY } from './db/mockData';
 import { supabase, hasValidSupabaseKeys } from './lib/supabase';
 
@@ -245,8 +246,16 @@ export default function App() {
 
       {user.role === 'admin' && (
         <>
-          {(currentTab === 'dashboard' || currentTab === 'orders') && (
-            <AdminDashboard orders={orders} onUpdateStatus={handleUpdateOrderStatus} />
+          {(currentTab === 'dashboard' || currentTab === 'admin-orders') && (
+            <AdminDashboard user={user} orders={orders} onUpdateStatus={handleUpdateOrderStatus} currentView={currentTab === 'dashboard' ? 'orders' : 'orders'} />
+          )}
+          {currentTab === 'admin-users' && (
+            <AdminDashboard user={user} orders={orders} onUpdateStatus={handleUpdateOrderStatus} currentView="users" />
+          )}
+          {currentTab === 'chat' && (
+            <div className="h-full">
+              <TeamChat user={user} />
+            </div>
           )}
         </>
       )}
@@ -255,6 +264,11 @@ export default function App() {
         <>
           {(currentTab === 'dashboard' || currentTab === 'pickups' || currentTab === 'deliveries') && (
             <RiderDashboard user={user} orders={orders} onUpdateStatus={handleUpdateOrderStatus} />
+          )}
+          {currentTab === 'chat' && (
+            <div className="h-full">
+              <TeamChat user={user} />
+            </div>
           )}
         </>
       )}
@@ -273,7 +287,12 @@ export default function App() {
             />
           )}
           {currentTab === 'admin-dashboard' && (
-            <AdminDashboard orders={orders} onUpdateStatus={handleUpdateOrderStatus} />
+            <AdminDashboard user={user} orders={orders} onUpdateStatus={handleUpdateOrderStatus} currentView="orders" />
+          )}
+          {currentTab === 'chat' && (
+            <div className="h-full">
+              <TeamChat user={user} />
+            </div>
           )}
         </>
       )}

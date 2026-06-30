@@ -52,17 +52,31 @@ CREATE TABLE IF NOT EXISTS public.inventory (
     low_stock_threshold REAL NOT NULL
 );
 
+-- Create Messages table
+CREATE TABLE IF NOT EXISTS public.messages (
+    id TEXT PRIMARY KEY,
+    sender_id TEXT NOT NULL REFERENCES public.users(id),
+    sender_name TEXT NOT NULL,
+    sender_role TEXT NOT NULL,
+    receiver_role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- Setup Row Level Security (RLS)
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- Create Policies (allowing anonymous access for demo purposes, you should restrict this in production)
 CREATE POLICY "Enable all access for all users" ON public.users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for all orders" ON public.orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for all alerts" ON public.alerts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all access for all inventory" ON public.inventory FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all access for all messages" ON public.messages FOR ALL USING (true) WITH CHECK (true);
+
 
 -- Insert demo inventory data
 INSERT INTO public.inventory (id, name, quantity, unit, low_stock_threshold) VALUES

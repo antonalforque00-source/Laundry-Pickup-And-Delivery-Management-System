@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Waves, LogOut, Home, PlusCircle, ClipboardList, LayoutDashboard, Package, UserCircle } from 'lucide-react';
+import { Waves, LogOut, Home, PlusCircle, ClipboardList, LayoutDashboard, Package, UserCircle, Users, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from '../../types';
 import { supabase, hasValidSupabaseKeys } from '../../lib/supabase';
@@ -44,6 +44,7 @@ export default function MainLayout({ children, user, currentTab, onTabChange, on
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'pickups', label: 'Pickups', icon: ClipboardList },
     { id: 'deliveries', label: 'Deliveries', icon: Package },
+    { id: 'chat', label: 'Team Chat', icon: MessageSquare },
   ];
 
   const staffTabs = [
@@ -51,11 +52,14 @@ export default function MainLayout({ children, user, currentTab, onTabChange, on
     { id: 'processing', label: 'Processing', icon: Waves },
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'admin-dashboard', label: 'Admin Controls', icon: LayoutDashboard },
+    { id: 'chat', label: 'Team Chat', icon: MessageSquare },
   ];
 
   const adminTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'orders', label: 'Manage Orders', icon: ClipboardList },
+    { id: 'admin-orders', label: 'Manage Orders', icon: ClipboardList },
+    { id: 'admin-users', label: 'Users & Balances', icon: Users },
+    { id: 'chat', label: 'Team Chat', icon: MessageSquare },
   ];
 
   let tabs;
